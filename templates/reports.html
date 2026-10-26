@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Monthly Reports ({{ selected_month }}){% endblock %}
+
+{% block content %}
+<!-- Reports Header with Month Filter -->
+<div class="row align-items-center mb-4 g-3">
+  <div class="col-12 col-md-6">
+    <h1 class="h3 fw-bold mb-1">Monthly Financial Reports</h1>
+    <p class="text-muted mb-0">Detailed breakdown and analytics of your spending habits and savings rate.</p>
+  </div>
+  <div class="col-12 col-md-6 text-md-end">
+    <form method="GET" action="{{ url_for('reports_view') }}" class="d-inline-flex align-items-center gap-2">
+      <label for="reportMonth" class="form-label mb-0 text-muted fw-bold small text-nowrap">
+        <i class="bi bi-calendar-month me-1"></i> Report Period:
+      </label>
+      <select name="month" id="reportMonth" class="form-select form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+        {% for m in available_months %}
+          <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<!-- Financial Health & Savings Card -->
+<div class="card shadow-sm mb-4 border-0">
+  <div class="card-body p-4 bg-white rounded">
+    <div class="row align-items-center g-4">
+      <div class="col-12 col-md-4 border-md-end">
+        <div class="text-muted small fw-bold text-uppercase mb-1">Savings Rate</div>
+        <div class="display-5 fw-extrabold {% if savings_rate >= 20 %}text-success{% elif savings_rate > 0 %}text-primary{% else %}text-danger{% endif %} mb-2">
+          {{ savings_rate }}%
+        </div>
+        <div class="progress" style="height: 8px;">
+          <div class="progress-bar {% if savings_rate >= 20 %}bg-success{% elif savings_rate > 0 %}bg-primary{% else %}bg-danger{% endif %}" role="progressbar" data-progress="{{ savings_rate }}" aria-valuenow="{{ savings_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="small text-muted mt-2">
+          {% if savings_rate >= 20 %}
+            <i class="bi bi-stars text-warning me-1"></i> Great savings discipline this month!
+          {% elif savings_rate > 0 %}
+            <i class="bi bi-check2 text-primary me-1"></i> Positive savings, keep tracking!
+          {% else %}
+            <i class="bi bi-exclamation-triangle text-danger me-1"></i> Expenses exceeded or matched income.
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-8">
+        <div class="row g-3">
+          <div class="col-4">
+            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Monthly Income</span>
+            <span class="fs-4 fw-bold text-success">{{ summary.income_paise | currency_inr }}</span>
+          </div>
+          <div class="col-4">
+            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Monthly Expenses</span>
+            <span class="fs-4 fw-bold text-danger">{{ summary.expense_paise | currency_inr }}</span>
+          </div>
+          <div class="col-4">
+            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Net Balance</span>
+            <span class="fs-4 fw-bold {% if summary.balance_paise >= 0 %}text-primary{% else %}text-danger{% endif %}">
+              {{ summary.balance_paise | currency_inr }}
+            </span>
+          </div>
+        </div>
+
+        {% if highest_expense_category %}
+          <div class="alert alert-light border mt-3 mb-0 p-2 d-flex align-items-center gap-2 small">
+            <i class="bi bi-fire text-danger fs-5"></i>
+            <div>
+              <strong>Top Expense Category:</strong> {{ highest_expense_category.category }} 
+              ({{ highest_expense_category.total_paise | currency_inr }}, accounting for {{ highest_expense_category.percentage }}% of total spending).
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Category-Wise Spending Breakdown Table -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+    <h2 class="h6 fw-bold mb-0">
+      <i class="bi bi-diagram-3-fill text-primary me-2"></i>Category-wise Spending Breakdown
+    </h2>
+    <span class="badge bg-light text-muted border">{{ category_breakdown | length }} Categories</span>
+  </div>
+
+  <div class="card-body p-0">
+    {% if category_breakdown %}
+      <div class="table-responsive">
+        <table class="table table-custom table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col" class="text-center">Transactions</th>
+              <th scope="col" style="width: 35%;">Share of Monthly Spending</th>
+              <th scope="col" class="text-end">Total Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in category_breakdown %}
+              <tr>
+                <td>
+                  <span class="fw-bold text-dark">{{ item.category }}</span>
+                </td>
+                <td class="text-center text-muted">
+                  {{ item.count }}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 10px;">
+                      <div class="progress-bar bg-primary" role="progressbar" data-progress="{{ item.percentage }}" aria-valuenow="{{ item.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <span class="small fw-bold text-muted" style="min-width: 45px;">{{ item.percentage }}%</span>
+                  </div>
+                </td>
+                <td class="text-end text-nowrap fw-bold text-danger">
+                  {{ item.total_paise | currency_inr }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <i class="bi bi-file-earmark-bar-graph"></i>
+        </div>
+        <h3 class="empty-state-title">No Spending in {{ selected_month }}</h3>
+        <p class="empty-state-text">No expense transactions have been recorded for this period yet.</p>
+        <a href="{{ url_for('add_transaction_view') }}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i> Add an Expense
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Safely set progress bar widths via data-progress attribute
+  document.querySelectorAll('[data-progress]').forEach(function (bar) {
+    var raw = parseFloat(bar.getAttribute('data-progress')) || 0;
+    var clamped = Math.min(Math.max(raw, 0), 100);
+    bar.style.width = clamped + '%';
+  });
+</script>
+{% endblock %}

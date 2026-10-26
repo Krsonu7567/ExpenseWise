@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit Transaction #{{ transaction_id }}{% else %}Add Transaction{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('transactions_list') }}">Transactions</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if is_edit %}Edit #{{ transaction_id }}{% else %}New{% endif %}</li>
+      </ol>
+    </nav>
+
+    <!-- Main Form Card -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white border-bottom py-3">
+        <h1 class="h5 fw-bold mb-1">
+          {% if is_edit %}
+            <i class="bi bi-pencil-square text-primary me-2"></i>Edit Transaction
+          {% else %}
+            <i class="bi bi-plus-circle text-primary me-2"></i>Add New Transaction
+          {% endif %}
+        </h1>
+        <p class="text-muted small mb-0">
+          {% if is_edit %}
+            Modify the details of your recorded transaction.
+          {% else %}
+            Record a new income or expense with accurate rupee calculations.
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" id="transactionForm" class="needs-validation" novalidate>
+          <!-- CSRF Token Hidden Input -->
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+          <!-- 1. Transaction Type Selector (Segmented Toggle) -->
+          <div class="mb-4">
+            <label class="form-label d-block fw-bold text-muted small text-uppercase">Transaction Type <span class="text-danger">*</span></label>
+            <div class="btn-group w-100" role="group" aria-label="Transaction Type">
+              <input type="radio" class="btn-check" name="transaction_type" id="typeExpense" value="expense" {% if (form_data.transaction_type or 'expense') == 'expense' %}checked{% endif %} required>
+              <label class="btn btn-outline-danger btn-type-expense py-2 d-flex align-items-center justify-content-center gap-2" for="typeExpense">
+                <i class="bi bi-arrow-up-right-circle-fill"></i>
+                <span>Expense</span>
+              </label>
+
+              <input type="radio" class="btn-check" name="transaction_type" id="typeIncome" value="income" {% if form_data.transaction_type == 'income' %}checked{% endif %} required>
+              <label class="btn btn-outline-success btn-type-income py-2 d-flex align-items-center justify-content-center gap-2" for="typeIncome">
+                <i class="bi bi-arrow-down-left-circle-fill"></i>
+                <span>Income</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Amount in Indian Rupees -->
+          <div class="mb-3">
+            <label for="amountInput" class="form-label fw-bold">Amount (₹) <span class="text-danger">*</span></label>
+            <div class="input-group has-validation">
+              <span class="input-group-text bg-light fw-bold text-dark fs-5">₹</span>
+              <input type="number" step="0.01" min="0.01" max="100000000" name="amount" id="amountInput" class="form-control form-control-lg fw-bold" placeholder="0.00" value="{{ form_data.amount }}" required autofocus>
+              <div class="invalid-feedback">
+                Please enter a valid amount greater than ₹0 (e.g. 250 or 250.50).
+              </div>
+            </div>
+            <div class="form-text text-muted small">
+              <i class="bi bi-shield-check text-success me-1"></i>Stored in integer paise internally for precision.
+            </div>
+          </div>
+
+          <!-- 3. Category Selection (Server-side pre-rendered + Client-side enhanced) -->
+          <div class="mb-3">
+            <label for="categorySelect" class="form-label fw-bold">Category <span class="text-danger">*</span></label>
+            <select name="category" id="categorySelect" class="form-select" required>
+              <option value="" disabled {% if not form_data.category %}selected{% endif %}>Select category...</option>
+              {% set current_type = form_data.transaction_type or 'expense' %}
+              {% set cat_list = categories[current_type] if current_type in categories else categories.expense %}
+              {% for cat in cat_list %}
+                <option value="{{ cat }}" {% if form_data.category == cat %}selected{% endif %}>{{ cat }}</option>
+              {% endfor %}
+              {% if form_data.category and form_data.category not in cat_list %}
+                <option value="{{ form_data.category }}" selected>{{ form_data.category }}</option>
+              {% endif %}
+            </select>
+            <div class="invalid-feedback">
+              Please select a category.
+            </div>
+          </div>
+
+          <!-- 4. Transaction Date -->
+          <div class="mb-3">
+            <label for="dateInput" class="form-label fw-bold">Date <span class="text-danger">*</span></label>
+            <div class="input-group has-validation">
+              <span class="input-group-text bg-light"><i class="bi bi-calendar3"></i></span>
+              <input type="date" name="transaction_date" id="dateInput" class="form-control" value="{{ form_data.transaction_date or current_date_str }}" required>
+              <div class="invalid-feedback">
+                Please select a valid transaction date.
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Description / Notes -->
+          <div class="mb-4">
+            <label for="descInput" class="form-label fw-bold">Description / Note <span class="text-muted fw-normal">(Optional)</span></label>
+            <input type="text" name="description" id="descInput" class="form-control" maxlength="255" placeholder="e.g. Chai, grocery run, freelance milestone" value="{{ form_data.description }}">
+            <div class="form-text text-muted small">Up to 255 characters.</div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <a href="{{ url_for('transactions_list') }}" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+            <button type="submit" class="btn btn-primary px-4" id="btn-submit-tx">
+              <i class="bi bi-check2-circle me-1"></i>
+              {% if is_edit %}Save Changes{% else %}Add Transaction{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Hidden data container for categories to avoid raw Jinja interpolation in JavaScript -->
+<div id="categoryConfig" class="d-none" data-categories='{{ categories | tojson }}' data-selected='{{ (form_data.category or "") | tojson }}'></div>
+
+<script>
+  // Safely parse category data from HTML data attributes
+  const configEl = document.getElementById('categoryConfig');
+  const categoryData = configEl ? JSON.parse(configEl.getAttribute('data-categories') || '{}') : {};
+  let currentCategory = configEl ? JSON.parse(configEl.getAttribute('data-selected') || '""') : '';
+  const categorySelect = document.getElementById('categorySelect');
+  const typeRadios = document.querySelectorAll('input[name="transaction_type"]');
+  const form = document.getElementById('transactionForm');
+
+  // Track user selection manually
+  categorySelect.addEventListener('change', function () {
+    currentCategory = this.value;
+  });
+
+  function updateCategoryOptions(selectedType) {
+    const list = categoryData[selectedType] || [];
+    categorySelect.innerHTML = '<option value="" disabled>Select category...</option>';
+    
+    let matched = false;
+    list.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      if (cat === currentCategory) {
+        opt.selected = true;
+        matched = true;
+      }
+      categorySelect.appendChild(opt);
+    });
+
+    // If current category is custom and not in default list, preserve it
+    if (currentCategory && !matched) {
+      const customOpt = document.createElement('option');
+      customOpt.value = currentCategory;
+      customOpt.textContent = currentCategory;
+      customOpt.selected = true;
+      categorySelect.appendChild(customOpt);
+      matched = true;
+    }
+
+    // Default to first item if not matched
+    if (!matched && list.length > 0) {
+      categorySelect.selectedIndex = 1;
+      currentCategory = categorySelect.value;
+    }
+  }
+
+  // Switch category list when radio selection changes
+  typeRadios.forEach(radio => {
+    radio.addEventListener('change', function () {
+      const newType = this.value;
+      const otherType = newType === 'expense' ? 'income' : 'expense';
+      // If previous category belongs to the other type, reset to pick default for new type
+      if (categoryData[otherType] && categoryData[otherType].includes(currentCategory)) {
+        currentCategory = '';
+      }
+      updateCategoryOptions(newType);
+    });
+  });
+
+  // Client-side Bootstrap validation handling
+  if (form) {
+    form.addEventListener('submit', function (event) {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+  }
+</script>
+{% endblock %}
