@@ -143,6 +143,32 @@ def init_db(db_path: Optional[str] = None) -> None:
         conn.close()
 
 
+def seed_demo_data_if_empty(db_path: Optional[str] = None) -> None:
+    """
+    Seed initial realistic sample transactions if the database is completely empty.
+    Ensures live portfolio/Vercel deployments showcase full charts and KPI cards immediately.
+    """
+    conn = get_db_connection(db_path)
+    try:
+        cur = conn.execute("SELECT COUNT(*) AS total FROM transactions;")
+        if cur.fetchone()["total"] == 0:
+            now = datetime.now()
+            current_m = now.strftime("%Y-%m")
+            d1 = f"{current_m}-01"
+            d2 = f"{current_m}-05"
+            d3 = f"{current_m}-07"
+            d4 = f"{current_m}-12"
+            d5 = f"{current_m}-18"
+
+            add_transaction("income", 4500000, "Salary", "Tech Internship Stipend", d1, db_path=db_path)
+            add_transaction("expense", 25000, "Food & Dining", "Chai & Samosa with friends", d2, db_path=db_path)
+            add_transaction("expense", 150000, "Transportation", "Monthly Metro Card Recharge", d3, db_path=db_path)
+            add_transaction("expense", 320000, "Groceries", "Supermarket & Hostel Supplies", d4, db_path=db_path)
+            add_transaction("expense", 85000, "Education", "Reference Textbook & Stationery", d5, db_path=db_path)
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # Transaction CRUD Operations
 # ============================================================================

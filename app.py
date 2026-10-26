@@ -52,6 +52,10 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     # Initialize the database table on startup (does not overwrite existing data)
     database.init_db(app.config["DB_PATH"])
 
+    # Automatically populate realistic demo records if deployed on a fresh/empty database
+    if not app.config.get("TESTING"):
+        database.seed_demo_data_if_empty(app.config["DB_PATH"])
+
     # ------------------------------------------------------------------------
     # CSRF Protection & Context Processors
     # ------------------------------------------------------------------------
